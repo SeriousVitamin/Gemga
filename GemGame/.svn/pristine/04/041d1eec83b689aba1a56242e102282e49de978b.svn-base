@@ -1,0 +1,128 @@
+package ru.gemgame;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.view.MotionEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+
+public class GameView extends SurfaceView
+{
+   private List<Sprite> sprites = new ArrayList<Sprite>();
+	
+    /**Загружаем спрайт*/
+   private Bitmap bmp;
+       
+   /**Поле рисования*/
+   private SurfaceHolder holder;
+   
+   /**объект класса GameView*/
+   private GameManager gameLoopThread;
+  
+   protected long fps;
+   
+   /**Конструктор*/
+   public GameView(Context context) 
+   {
+   	super(context);
+       
+       gameLoopThread = new GameManager(this);
+       
+       /*Рисуем все наши объекты и все все все*/
+       getHolder().addCallback(new SurfaceHolder.Callback() 
+       {
+     	  	 /*** Уничтожение области рисования */
+              public void surfaceDestroyed(SurfaceHolder holder) 
+              {
+                     boolean retry = true;
+                     gameLoopThread.setRunning(false);
+                     while (retry) 
+                     {
+                            try 
+                            {
+                                  gameLoopThread.join();
+                                  retry = false;
+                            } catch (InterruptedException e) {}
+                     }
+              }
+
+              /** Создание области рисования */
+              public void surfaceCreated(SurfaceHolder holder) 
+              {
+                     createSprites();
+                     gameLoopThread.setRunning(true);
+                     gameLoopThread.start();
+              }
+
+              /** Изменение области рисования */
+              public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) 
+              {
+              }
+       });
+   }
+   
+   private Sprite createSprite(int resouce) 
+   {
+	     Bitmap bmp = BitmapFactory.decodeResource(getResources(), resouce);
+	     return new Sprite(this,bmp);
+   }
+
+   /* Событие столкновения */
+   public boolean onTouchEvent(MotionEvent event)
+   {
+   	synchronized (getHolder()) 
+   	{
+   	        for (int i = sprites.size()-1; i > 0; i--) 
+   	        {
+   	                Sprite sprite = sprites.get(i);
+   	                if (sprite.isCollition(event.getX(),event.getY())) 
+   	                {
+   	                     sprites.remove(sprite);
+   	                     break;
+   	                }
+   	        }
+   	}
+   	
+   	return super.onTouchEvent(event);
+   }
+   
+   /**Функция, рисующая все спрайты и фон*/
+   @SuppressLint("WrongCall")
+protected void onDraw(Canvas canvas) 
+   {
+	   canvas.drawColor(Color.rgb(110, 170, 60));
+       
+	   Paint paint = new Paint();
+	   paint.setStrokeWidth(2);
+	   paint.setTextSize(20);
+	   
+	   canvas.drawText(new String().valueOf(fps), 30, 50, paint);
+	   
+       for (Sprite sprite : sprites) 
+       {
+              sprite.onDraw(canvas);
+       }
+   }
+   
+   /**Создание всех спрайтов*/
+   private void createSprites() 
+   {
+   	for (int i = 0; i < 1; i ++)	// 270 - samsung galaxy ??
+   		sprites.add(createSprite(R.drawable.ic_launcher));
+   }
+   
+   public void surfaceCreated(SurfaceHolder holder) 
+   {
+		 createSprites();
+		 gameLoopThread.setRunning(true);
+		 gameLoopThread.start();
+   }
+}
